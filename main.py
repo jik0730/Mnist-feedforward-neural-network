@@ -6,46 +6,44 @@ from read_data import mnist
 from functions import softmax
 from functions import batch
 from functions import regression
+from functions import cross_entropy
+from functions import accuracy
 
 
-def main(tr_i, tr_l, te_i, te_l):
-    if len(sys.argv) != 5:
-        print("The number of input arguments should be 5.")
-        return
+def main():
+    # Load data set
+    print("Load training data...")
+    training_images, training_labels, test_images, test_labels = mnist()
 
-    # Initialize data set
-    training_images, training_labels, test_images, test_labels = mnist(tr_i, tr_l, te_i, te_l)
+    # Initialize parameters (Hidden layer: 1)
+    batch_size = 100
+    learning_rate = 2
+    hl_units = 113
+    W1 = np.ones((785,hl_units)) # W1 appended by bias(b1)
+    W2 = np.ones((hl_units, 10)) # W2 appended by bias(b2)
 
-    # Initialize parameters
-    W = np.zeros((785,10)) # W appended by bias(b)
-    ones = np.ones((200,1))
-    ones2 = np.ones((10000,1))
+    # Gradient functions
+    grad_W1 = grad(cross_entropy, argnum=0)
+    grad_W2 = grad(cross_entropy, argnum=1)
+
+    # For plotting
     plt_y = []
     
-    # Cross entropy function
-    def cross_entropy(W):
-        y = np.transpose(softmax(np.transpose(np.matmul(batch_xs, W))))
-        y += sys.float_info.min
-        toReturn = np.mean(-np.sum(batch_ys*np.log(y), axis=1))
-        plt_y.append(toReturn.value)
-        return toReturn
-    training_gradient = grad(cross_entropy)
-    
+    # Training
+    print("Start training...")
     for i in range(1000):
         batch_xs, batch_ys = batch(training_images, training_labels)
-        batch_xs = np.append(batch_xs, ones, axis=1)
-        W -= training_gradient(W) * 0.0001
+        batch_xs = np.append(batch_xs, np.ones((batch_size,1)), axis=1)
+        plt_y.append(cross_entropy(W1, W2, batch_xs, batch_ys))
+        W2 -= grad_W2(W1, W2, batch_xs, batch_ys) * learning_rate
+        W1 -= grad_W1(W1, W2, batch_xs, batch_ys) * learning_rate
 
-    # Plotting for testing
-    #plt.plot(plt_y)
-    #plt.show()
+    plt.plot(plt_y)
+    plt.show()
 
-    y_ = np.argmax(np.transpose(test_labels), axis=0)
-    test_images = np.append(test_images, ones2, axis=1)
-    yy = np.argmax(np.transpose(regression(test_images, W)), axis=0)
-    correct = np.mean(np.equal(y_, yy))
-    print("Correctness: ", correct)
+    # Print accuracy
+    accuracy(W1, W2, test_images, test_labels)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    main()
